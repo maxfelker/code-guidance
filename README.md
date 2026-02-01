@@ -9,6 +9,7 @@ This repository serves as a knowledge base documenting proven approaches and pat
 ## Contents
 
 - [React](./react.md) - React application architecture and patterns
+- [JavaScript](./javascript.md) - JavaScript fundamentals and patterns
 - [Docker](./docker.md) - Docker containerization for frontend applications
 
 ## Usage

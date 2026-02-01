@@ -2,457 +2,394 @@
 
 Platform-agnostic patterns for building React applications with functional components, hooks, and feature-based architecture.
 
-## Project Structure
+> **Note**: This guide assumes familiarity with JavaScript fundamentals. See [javascript.md](./javascript.md) for async/await, array methods, fetch API, and other JavaScript patterns.
 
-### Feature-Based Organization
+## Best Practices
 
-Organize by feature/domain rather than by file type:
+### Architecture & Organization
+1. **Feature-based folder structure** - Organize by feature/domain (Users, Products) not by type (components, containers)
+2. **Co-locate related files** - Keep component, styles, and service files together
+3. **One component per file** - Export as default, name file `index.jsx`
+4. **Service layer for API calls** - Isolate all fetch logic in `service.*.js` files
 
-```
-src/
-├── App/                    # Root application and routing
-│   ├── index.jsx          # Main App component
-│   ├── config.js          # Configuration management
-│   └── styles.module.css  # App-level styles
-├── Feature1/              # Feature domain (e.g., Users, Products)
-│   ├── index.jsx          # Feature entry/list component
-│   ├── Detail/            # Sub-feature: detail view
-│   │   └── index.jsx
-│   ├── Create/            # Sub-feature: create view
-│   │   └── index.jsx
-│   ├── Form/              # Feature-specific form
-│   │   ├── index.jsx
-│   │   └── styles.module.css
-│   ├── service.feature1.js  # API service layer
-│   └── styles.module.css    # Feature styles
-├── Feature2/              # Another feature domain
-│   └── ...
-├── SharedComponents/      # Reusable components
-│   ├── Form/
-│   │   ├── TextInput/
-│   │   │   └── index.jsx
-│   │   ├── NumberInput/
-│   │   │   └── index.jsx
-│   │   └── index.jsx
-│   └── Layout/
-│       └── index.jsx
-└── main.jsx              # Application entry point
-```
+### Component Design
+5. **Functional components only** - No class components, use hooks for state/effects
+6. **Single responsibility** - Each component does one thing well
+7. **Composition over inheritance** - Build complex UIs from simple components
+8. **Props for data flow** - Data flows down, events flow up
 
-### File Organization Rules
+### State Management
+9. **useState for component state** - Local state in components
+10. **localStorage for config** - App-wide configuration, non-sensitive data
+11. **sessionStorage for auth** - Temporary session data, auth tokens
+12. **No global state library** - Keep it simple until you need Redux/Zustand
 
-Each feature folder contains:
-- **Component files** (`index.jsx`) - Main component export
-- **Service files** (`service.*.js`) - API/business logic
-- **Style modules** (`styles.module.css`) - Scoped styles
-- **Sub-components** - Nested folders for complex features
+### Data & Side Effects
+13. **useEffect for side effects** - Data fetching, subscriptions, DOM manipulation
+14. **Async/await in effects** - Define async function inside useEffect, then call it
+15. **Cleanup in effects** - Return cleanup function for subscriptions/timers
 
-## Component Patterns
+### Styling
+16. **CSS Modules for scoped styles** - Import styles as JavaScript object
+17. **Inline styles for dynamic values** - Use for one-off or computed styles
 
-### 1. Feature Entry Component (List/Index)
+### Code Quality
+18. **Explicit conditionals** - Use `{data && <Component />}` not ternaries everywhere
+19. **Destructure props** - Extract what you need: `function User({ name, age })`
+20. **Meaningful names** - `isLoading` not `flag`, `handleSubmit` not `submit`
+21. **Try-catch for errors** - Wrap async operations, display errors to users
+22. **Native fetch API** - No axios needed for simple requests
 
-**File**: `src/Feature/index.jsx`
+### Routing
+23. **React Router for navigation** - Single `<Router>` at app root
+24. **useParams for URL params** - Access dynamic route segments
+25. **useNavigate for redirects** - Programmatic navigation after actions
 
-**Purpose**: Main entry point for a feature, typically displays a list
+## Core Concepts
 
-**Exports**: Default export of functional component
+### JSX
+
+JSX is JavaScript syntax extension that looks like HTML. It describes UI structure and compiles to JavaScript.
 
 ```javascript
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { getItems } from './service.feature';
-import styles from './styles.module.css';
+// JSX (what you write)
+const element = <h1 className="title">Hello World</h1>;
 
-export default function FeatureList() {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const data = await getItems();
-        setItems(data);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchData();
-  }, []);
-
-  if (loading) return <p>Loading...</p>;
-
-  return (
-    <div className={styles.container}>
-      <h1>Items</h1>
-      <Link to="/items/new">Create New</Link>
-      <ul className={styles.list}>
-        {items.map(item => (
-          <li key={item.id}>
-            <Link to={`/items/${item.id}`}>{item.name}</Link>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
+// Compiles to
+const element = React.createElement('h1', { className: 'title' }, 'Hello World');
 ```
 
-### 2. Detail Component (View/Edit)
+**Rules**:
+- Use `className` not `class` (class is JavaScript keyword)
+- Use `htmlFor` not `for` (for is JavaScript keyword)
+- Close all tags: `<img />` not `<img>`
+- Wrap in parentheses for multi-line
+- One root element (or use fragment `<>...</>`)
 
-**File**: `src/Feature/Detail/index.jsx`
+**Embedding JavaScript**:
+```javascript
+const name = 'Alice';
+const age = 30;
 
-**Purpose**: Display and edit a single item
+// Curly braces for JavaScript expressions
+<h1>Hello {name}</h1>
+<p>Next year you'll be {age + 1}</p>
+<div className={isActive ? 'active' : 'inactive'}>Content</div>
+```
 
-**Exports**: Default export of functional component
+### React Hooks
+
+Hooks are functions that let you "hook into" React features from functional components.
+
+**Rules**:
+- Only call at top level (not in loops, conditions, or nested functions)
+- Only call from React functions (components or custom hooks)
+- Names start with `use` (useState, useEffect, useCustomHook)
+
+## Complete Component Example
+
+This example demonstrates a full CRUD detail page with all key patterns explained inline.
+
+**File**: `src/Users/Detail/index.jsx`
 
 ```javascript
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { retrieveItem, updateItem, deleteItem } from '../service.feature';
-import ItemForm from '../Form';
+import { retrieveUser, updateUser, deleteUser } from '../service.users';
+import UserForm from '../Form';
+import styles from './styles.module.css';
 
-export default function ItemDetail() {
+export default function UserDetail() {
+  // URL parameters from route /users/:id
   const { id } = useParams();
-  const [item, setItem] = useState(null);
+  
+  // Navigation for redirects after actions
   const navigate = useNavigate();
-
+  
+  // Component state
+  const [user, setUser] = useState(null); // Loaded user data
+  const [loading, setLoading] = useState(true); // Loading indicator
+  const [error, setError] = useState(null); // Error message
+  
+  // Fetch user data when component mounts or id changes
   useEffect(() => {
     async function fetchData() {
       try {
-        const data = await retrieveItem(id);
-        setItem(data);
-      } catch (error) {
-        console.error(error);
+        setLoading(true);
+        setError(null);
+        const data = await retrieveUser(id);
+        setUser(data);
+      } catch (err) {
+        console.error('Failed to fetch user:', err);
+        setError('Failed to load user. Please try again.');
+      } finally {
+        setLoading(false);
       }
     }
+    
     fetchData();
-  }, [id]);
-
-  async function handleSubmit(itemData) {
+  }, [id]); // Re-run when id changes
+  
+  // Update user handler - passed to form
+  async function handleUpdate(userData) {
     try {
-      return await updateItem(id, itemData);
-    } catch (error) {
-      console.error(error);
+      return await updateUser(id, userData);
+    } catch (err) {
+      console.error('Failed to update user:', err);
+      throw err; // Re-throw so form can handle it
     }
   }
-
-  function handleSuccess(updatedItem) {
-    setItem(updatedItem);
+  
+  // Success callback - update local state with saved data
+  function handleSuccess(updatedUser) {
+    setUser(updatedUser);
   }
-
+  
+  // Delete user with confirmation
   async function handleDelete() {
-    const confirmed = confirm('Are you sure?');
-    if (confirmed) {
-      try {
-        await deleteItem(id);
-        navigate('/items');
-      } catch (error) {
-        console.error(error);
-      }
+    const confirmed = confirm('Are you sure you want to delete this user?');
+    if (!confirmed) return;
+    
+    try {
+      await deleteUser(id);
+      navigate('/users'); // Redirect to list after delete
+    } catch (err) {
+      console.error('Failed to delete user:', err);
+      setError('Failed to delete user. Please try again.');
     }
   }
-
-  if (!item) return <p>Loading...</p>;
-
+  
+  // Loading state
+  if (loading) {
+    return <div className={styles.loading}>Loading...</div>;
+  }
+  
+  // Error state
+  if (error) {
+    return (
+      <div className={styles.error}>
+        <p>{error}</p>
+        <Link to="/users">Back to Users</Link>
+      </div>
+    );
+  }
+  
+  // No user found
+  if (!user) {
+    return (
+      <div>
+        <p>User not found</p>
+        <Link to="/users">Back to Users</Link>
+      </div>
+    );
+  }
+  
+  // Main render
   return (
-    <div>
-      <h1>{item.name}</h1>
-      <ItemForm
-        initialItem={item}
-        submitHandler={handleSubmit}
+    <div className={styles.container}>
+      <h1>{user.name}</h1>
+      <p className={styles.email}>{user.email}</p>
+      
+      <UserForm
+        initialUser={user}
+        submitHandler={handleUpdate}
         onSuccess={handleSuccess}
-        submitBtnLabel="Save"
+        submitBtnLabel="Save Changes"
       />
-      <button onClick={handleDelete}>Delete</button>
-      <Link to="/items">Back to List</Link>
+      
+      <div className={styles.actions}>
+        <button 
+          onClick={handleDelete} 
+          className={styles.deleteBtn}
+        >
+          Delete User
+        </button>
+        <Link to="/users">Back to List</Link>
+      </div>
     </div>
   );
 }
 ```
 
-### 3. Create Component
+**Explanation**:
+- **useParams**: Extracts `id` from URL (`/users/123` → `id = '123'`)
+- **useNavigate**: Enables redirect after delete
+- **useState**: Three pieces of state (user, loading, error)
+- **useEffect**: Fetches data on mount and when `id` changes
+- **Async function in effect**: Can't make useEffect async directly, so define async function inside
+- **Error handling**: Try-catch blocks with user-friendly error messages
+- **Conditional rendering**: Show different UI for loading, error, and success states
+- **Props to child**: Pass handlers to UserForm for controlled behavior
+- **CSS Modules**: Import styles as object, use `styles.className`
 
-**File**: `src/Feature/Create/index.jsx`
+**Component Structure**:
+1. Imports (React hooks, Router hooks, services, styles)
+2. Component function definition
+3. Hooks at top (useParams, useNavigate, useState, useEffect)
+4. Handler functions
+5. Early returns for loading/error states
+6. Main render return
 
-**Purpose**: Create a new item
+## Project Structure
 
-**Exports**: Default export of functional component
+Organize code by feature/domain rather than by file type. Each feature is self-contained with its components, services, and styles.
 
-```javascript
-import { useNavigate } from 'react-router-dom';
-import { createItem } from '../service.feature';
-import ItemForm from '../Form';
-
-export default function ItemCreate() {
-  const navigate = useNavigate();
-
-  async function handleSubmit(itemData) {
-    try {
-      return await createItem(itemData);
-    } catch (error) {
-      console.error(error);
-    }
-  }
-
-  function handleSuccess(newItem) {
-    navigate(`/items/${newItem.id}`);
-  }
-
-  return (
-    <div>
-      <h1>Create New Item</h1>
-      <ItemForm
-        submitHandler={handleSubmit}
-        onSuccess={handleSuccess}
-        submitBtnLabel="Create"
-      />
-    </div>
-  );
-}
+```
+src/
+├── App/                    # Root application
+│   ├── index.jsx          # Router and routes
+│   ├── config.js          # Configuration loader
+│   └── styles.module.css
+├── Users/                 # Users feature
+│   ├── index.jsx          # User list component
+│   ├── Detail/            # User detail page
+│   │   ├── index.jsx
+│   │   └── styles.module.css
+│   ├── Create/            # User creation page
+│   │   └── index.jsx
+│   ├── Form/              # Reusable user form
+│   │   ├── index.jsx
+│   │   └── styles.module.css
+│   ├── service.users.js   # API calls for users
+│   └── styles.module.css
+├── Products/              # Products feature
+│   ├── index.jsx
+│   ├── Detail/
+│   ├── service.products.js
+│   └── styles.module.css
+├── Shared/                # Shared components
+│   ├── Form/
+│   │   ├── TextInput/
+│   │   │   ├── index.jsx
+│   │   │   └── styles.module.css
+│   │   └── NumberInput/
+│   │       └── index.jsx
+│   └── Layout/
+│       └── index.jsx
+└── main.jsx              # App entry point
 ```
 
-### 4. Form Component (Reusable)
+**Why feature-based?**
+- All related code in one place
+- Easy to find and modify features
+- Clear boundaries between features
+- Can move/delete entire features easily
 
-**File**: `src/Feature/Form/index.jsx`
+**File Naming Rules**:
+- **Components**: `index.jsx` (one per folder)
+- **Services**: `service.featurename.js` (e.g., `service.users.js`)
+- **Styles**: `styles.module.css` (CSS Modules)
+- **Folders**: PascalCase for components (`UserDetail/`), camelCase for utilities
 
-**Purpose**: Reusable form for create/edit operations
+## Service Layer
 
-**Exports**: Default export of functional component
+The service layer isolates all API interactions. Components call service functions, never fetch directly.
 
-```javascript
-import { useState } from 'react';
-import styles from './styles.module.css';
-
-export default function ItemForm({ 
-  initialItem = {}, 
-  submitHandler, 
-  onSuccess,
-  submitBtnLabel = 'Submit' 
-}) {
-  const [formData, setFormData] = useState({
-    name: initialItem.name || '',
-    description: initialItem.description || '',
-    quantity: initialItem.quantity || 0,
-  });
-  const [errors, setErrors] = useState({});
-  const [submitting, setSubmitting] = useState(false);
-
-  function handleChange(e) {
-    const { name, value, type } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'number' ? parseFloat(value) : value
-    }));
-  }
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setErrors({});
-    setSubmitting(true);
-
-    try {
-      const result = await submitHandler(formData);
-      if (result.error) {
-        setErrors({ submit: result.error });
-      } else {
-        onSuccess(result);
-      }
-    } catch (error) {
-      setErrors({ submit: error.message });
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className={styles.form}>
-      <div className={styles.field}>
-        <label htmlFor="name">Name</label>
-        <input
-          type="text"
-          id="name"
-          name="name"
-          value={formData.name}
-          onChange={handleChange}
-          required
-        />
-      </div>
-
-      <div className={styles.field}>
-        <label htmlFor="description">Description</label>
-        <textarea
-          id="description"
-          name="description"
-          value={formData.description}
-          onChange={handleChange}
-          rows={4}
-        />
-      </div>
-
-      <div className={styles.field}>
-        <label htmlFor="quantity">Quantity</label>
-        <input
-          type="number"
-          id="quantity"
-          name="quantity"
-          value={formData.quantity}
-          onChange={handleChange}
-          min={0}
-        />
-      </div>
-
-      {errors.submit && <p className={styles.error}>{errors.submit}</p>}
-
-      <button type="submit" disabled={submitting}>
-        {submitting ? 'Submitting...' : submitBtnLabel}
-      </button>
-    </form>
-  );
-}
-```
-
-### 5. Service Layer
-
-**File**: `src/Feature/service.feature.js`
-
-**Purpose**: Isolate API calls and business logic
-
-**Exports**: Named exports of async functions
+**File**: `src/Users/service.users.js`
 
 ```javascript
+// Base URL from localStorage (set at app startup)
 function apiUrl() {
   return localStorage.getItem('apiBaseUrl');
 }
 
 function baseUrl() {
-  return `${apiUrl()}/items`;
+  return `${apiUrl()}/users`;
 }
 
+// Helper to get auth header
 function getAuthHeader() {
   const token = sessionStorage.getItem('auth-token');
   return token ? { 'Authorization': `Bearer ${token}` } : {};
 }
 
-export async function createItem(item) {
+// CREATE - POST request
+export async function createUser(user) {
   const response = await fetch(baseUrl(), {
     method: 'POST',
     headers: {
       ...getAuthHeader(),
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(item),
+    body: JSON.stringify(user),
   });
   return await response.json();
 }
 
-export async function retrieveItem(id) {
+// READ - GET single user
+export async function retrieveUser(id) {
   const response = await fetch(`${baseUrl()}/${id}`, {
     headers: getAuthHeader(),
   });
   return await response.json();
 }
 
-export async function updateItem(id, item) {
+// UPDATE - PATCH request
+export async function updateUser(id, user) {
   const response = await fetch(`${baseUrl()}/${id}`, {
     method: 'PATCH',
     headers: {
       ...getAuthHeader(),
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(item),
+    body: JSON.stringify(user),
   });
   return await response.json();
 }
 
-export async function deleteItem(id) {
+// DELETE - DELETE request
+export async function deleteUser(id) {
   const response = await fetch(`${baseUrl()}/${id}`, {
     method: 'DELETE',
-    headers: {
-      ...getAuthHeader(),
-      'Content-Type': 'application/json',
-    }
+    headers: getAuthHeader(),
   });
   return await response.json();
 }
 
-export async function getItems() {
+// LIST - GET all users
+export async function getUsers() {
   const response = await fetch(baseUrl(), {
     headers: getAuthHeader(),
   });
   return await response.json();
 }
 
-export async function getMyItems() {
-  const token = sessionStorage.getItem('auth-token');
-  const url = `${apiUrl()}/my/items`;
+// GET current user's items
+export async function getMyUsers() {
+  const url = `${apiUrl()}/my/users`;
   const response = await fetch(url, {
-    headers: { 'Authorization': `Bearer ${token}` },
+    headers: getAuthHeader(),
   });
   return await response.json();
 }
 ```
 
-### 6. Shared Components
+**Explanation**:
+- **Named exports**: Each function is exported individually
+- **Helper functions**: `apiUrl()`, `baseUrl()`, `getAuthHeader()` not exported (internal)
+- **Consistent patterns**: All functions follow same structure
+- **RESTful naming**: `create`, `retrieve`, `update`, `delete` match HTTP verbs
+- **Authorization**: Auth token added to headers when available
+- **localStorage**: API URL configured at runtime, not hardcoded
 
-**File**: `src/SharedComponents/Form/TextInput/index.jsx`
-
-**Purpose**: Reusable form input components
-
-**Exports**: Default export of functional component
-
-```javascript
-import styles from './styles.module.css';
-
-export default function TextInput({ 
-  label, 
-  name, 
-  value, 
-  onChange, 
-  required = false,
-  placeholder = '',
-  error = null 
-}) {
-  return (
-    <div className={styles.field}>
-      <label htmlFor={name}>
-        {label}
-        {required && <span className={styles.required}>*</span>}
-      </label>
-      <input
-        type="text"
-        id={name}
-        name={name}
-        value={value}
-        onChange={onChange}
-        required={required}
-        placeholder={placeholder}
-        className={error ? styles.inputError : ''}
-      />
-      {error && <span className={styles.error}>{error}</span>}
-    </div>
-  );
-}
-```
+**Benefits**:
+- Components stay clean (no fetch code)
+- Easy to test (mock service functions)
+- API changes isolated to one file
+- Consistent error handling
+- Reusable across components
 
 ## Routing
 
-### App Router Setup
-
 **File**: `src/App/index.jsx`
-
-**Purpose**: Root component with routing configuration
-
-**Exports**: Default export of App component
 
 ```javascript
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import HomePage from '../HomePage';
 import Dashboard from '../Dashboard';
-import ItemList from '../Items';
-import ItemDetail from '../Items/Detail';
-import ItemCreate from '../Items/Create';
+import UserList from '../Users';
+import UserDetail from '../Users/Detail';
+import UserCreate from '../Users/Create';
 import NotFound from '../NotFound';
 import styles from './styles.module.css';
 
@@ -461,13 +398,16 @@ export default function App() {
     <div className={styles.app}>
       <Router>
         <Routes>
+          {/* Static routes */}
           <Route path="/" element={<HomePage />} />
           <Route path="/dashboard" element={<Dashboard />} />
           
-          <Route path="/items" element={<ItemList />} />
-          <Route path="/items/new" element={<ItemCreate />} />
-          <Route path="/items/:id" element={<ItemDetail />} />
+          {/* Feature routes */}
+          <Route path="/users" element={<UserList />} />
+          <Route path="/users/new" element={<UserCreate />} />
+          <Route path="/users/:id" element={<UserDetail />} />
           
+          {/* Catch-all for 404 */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>
@@ -476,19 +416,325 @@ export default function App() {
 }
 ```
 
-**Routing Patterns**:
-- Single `<Router>` at app root
-- Nested routes use path segments (`/items/:id`)
-- Dynamic parameters accessed via `useParams()`
-- Catch-all route for 404s (`path="*"`)
+**Explanation**:
+- **BrowserRouter**: Enables client-side routing
+- **Routes**: Container for all Route components
+- **Route**: Maps path to component
+- **path="/"**: Root route
+- **path="/users/:id"**: Dynamic parameter (accessed with useParams)
+- **path="*"**: Catch-all for unmatched routes (404)
+- **element prop**: Component to render for this route
 
-## Application Entry Point
+**Route Order**: More specific routes before general ones (e.g., `/users/new` before `/users/:id`)
+
+## React Hooks Reference
+
+### useState
+
+Adds state to functional components. Returns current value and setter function.
+
+```javascript
+import { useState } from 'react';
+
+function Counter() {
+  // [currentValue, setterFunction] = useState(initialValue)
+  const [count, setCount] = useState(0);
+  
+  return (
+    <div>
+      <p>Count: {count}</p>
+      <button onClick={() => setCount(count + 1)}>Increment</button>
+      <button onClick={() => setCount(0)}>Reset</button>
+    </div>
+  );
+}
+```
+
+**Explanation**: `useState(0)` initializes count to 0. `setCount` updates the value and triggers re-render.
+
+**With Objects**:
+```javascript
+const [user, setUser] = useState({ name: '', email: '' });
+
+// Update entire object
+setUser({ name: 'Alice', email: 'alice@example.com' });
+
+// Update one property (merge with existing)
+setUser(prev => ({ ...prev, name: 'Alice' }));
+```
+
+**Explanation**: When updating objects, spread previous state (`...prev`) to keep other properties intact.
+
+**With Arrays**:
+```javascript
+const [items, setItems] = useState([]);
+
+// Add item
+setItems(prev => [...prev, newItem]);
+
+// Remove item
+setItems(prev => prev.filter(item => item.id !== idToRemove));
+
+// Update item
+setItems(prev => prev.map(item => 
+  item.id === targetId ? { ...item, name: newName } : item
+));
+```
+
+**Explanation**: Use array methods (filter, map) with spread to create new arrays rather than mutating.
+
+### useEffect
+
+Performs side effects (data fetching, subscriptions, DOM manipulation) in functional components.
+
+```javascript
+import { useState, useEffect } from 'react';
+
+function UserProfile({ userId }) {
+  const [user, setUser] = useState(null);
+  
+  // Run after every render
+  useEffect(() => {
+    console.log('Component rendered');
+  });
+  
+  // Run once on mount
+  useEffect(() => {
+    console.log('Component mounted');
+  }, []);
+  
+  // Run when dependency changes
+  useEffect(() => {
+    fetchUser(userId).then(data => setUser(data));
+  }, [userId]); // Re-run when userId changes
+  
+  // With cleanup
+  useEffect(() => {
+    const timer = setInterval(() => console.log('tick'), 1000);
+    
+    // Cleanup function (runs before next effect and on unmount)
+    return () => clearInterval(timer);
+  }, []);
+  
+  return <div>{user?.name}</div>;
+}
+```
+
+**Explanation**:
+- **No dependency array**: Runs after every render
+- **Empty array `[]`**: Runs once on mount
+- **With dependencies `[userId]`**: Runs when userId changes
+- **Return cleanup function**: Unsubscribe, clear timers, cancel requests
+
+**Data fetching pattern**:
+```javascript
+useEffect(() => {
+  // Define async function inside effect
+  async function fetchData() {
+    try {
+      const data = await getUsers();
+      setUsers(data);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+  
+  fetchData();
+}, []);
+```
+
+**Explanation**: Can't make useEffect callback async directly. Define async function inside and call it immediately.
+
+### useParams
+
+Accesses dynamic URL parameters from React Router.
+
+```javascript
+import { useParams } from 'react-router-dom';
+
+function UserDetail() {
+  // Route: /users/:id
+  const { id } = useParams(); // id = '123' from /users/123
+  
+  // Route: /posts/:postId/comments/:commentId
+  const { postId, commentId } = useParams();
+  
+  return <div>User ID: {id}</div>;
+}
+```
+
+**Explanation**: Parameter names in route definition (`:id`) become object keys in useParams().
+
+### useNavigate
+
+Programmatically navigate to different routes.
+
+```javascript
+import { useNavigate } from 'react-router-dom';
+
+function CreateUser() {
+  const navigate = useNavigate();
+  
+  async function handleSubmit(userData) {
+    const newUser = await createUser(userData);
+    
+    // Navigate to detail page
+    navigate(`/users/${newUser.id}`);
+  }
+  
+  function handleCancel() {
+    // Go back one page in history
+    navigate(-1);
+  }
+  
+  function goHome() {
+    // Navigate to specific path
+    navigate('/');
+  }
+  
+  return (
+    <form onSubmit={handleSubmit}>
+      {/* form fields */}
+      <button type="submit">Create</button>
+      <button type="button" onClick={handleCancel}>Cancel</button>
+    </form>
+  );
+}
+```
+
+**Explanation**: 
+- `navigate('/path')` - Go to specific route
+- `navigate(-1)` - Go back one page (like browser back button)
+- `navigate(1)` - Go forward one page
+
+### useLocation
+
+Access current route information.
+
+```javascript
+import { useLocation } from 'react-router-dom';
+
+function Navigation() {
+  const location = useLocation();
+  
+  return (
+    <nav>
+      <a 
+        href="/" 
+        className={location.pathname === '/' ? 'active' : ''}
+      >
+        Home
+      </a>
+      <a 
+        href="/about" 
+        className={location.pathname === '/about' ? 'active' : ''}
+      >
+        About
+      </a>
+    </nav>
+  );
+}
+```
+
+**Explanation**: `location.pathname` contains current route path. Use it to highlight active navigation links.
+
+## Styling with CSS Modules
+
+CSS Modules scope styles to components, preventing naming conflicts.
+
+**File**: `src/Users/Detail/styles.module.css`
+
+```css
+.container {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 2rem;
+}
+
+.loading {
+  text-align: center;
+  color: #999;
+  padding: 2rem;
+}
+
+.error {
+  color: #d32f2f;
+  background-color: #ffebee;
+  padding: 1rem;
+  border-radius: 4px;
+  margin: 1rem 0;
+}
+
+.email {
+  color: #666;
+  font-size: 0.875rem;
+  margin-bottom: 2rem;
+}
+
+.actions {
+  margin-top: 2rem;
+  display: flex;
+  gap: 1rem;
+}
+
+.deleteBtn {
+  background-color: #d32f2f;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.deleteBtn:hover {
+  background-color: #b71c1c;
+}
+```
+
+**Using in Component**:
+
+```javascript
+import styles from './styles.module.css';
+
+function UserDetail() {
+  return (
+    <div className={styles.container}>
+      <p className={styles.email}>user@example.com</p>
+      <button className={styles.deleteBtn}>Delete</button>
+    </div>
+  );
+}
+```
+
+**Explanation**: Import styles as JavaScript object. Access class names as object properties. Vite/Webpack transforms class names to be unique (`container_a3x9b`).
+
+**Combining Multiple Classes**:
+```javascript
+<div className={`${styles.button} ${styles.primary}`}>Click</div>
+```
+
+**Conditional Classes**:
+```javascript
+<div className={isActive ? styles.active : styles.inactive}>Content</div>
+```
+
+**Inline Styles for Dynamic Values**:
+```javascript
+<div 
+  className={styles.box}
+  style={{ backgroundColor: color, width: `${width}px` }}
+>
+  Content
+</div>
+```
+
+**Explanation**: Use inline styles when values are computed or dynamic. CSS Modules for static styles.
+
+## Configuration Management
+
+Load environment variables differently in development vs production.
 
 **File**: `src/main.jsx`
-
-**Purpose**: Bootstrap and render React application
-
-**Exports**: None (executes immediately)
 
 ```javascript
 import React from 'react';
@@ -497,7 +743,7 @@ import App from './App';
 import { setLocalStorageConfigs } from './App/config';
 
 async function render() {
-  // Load configuration before rendering
+  // Load config before rendering app
   await setLocalStorageConfigs();
 
   ReactDOM.createRoot(document.getElementById('root')).render(
@@ -510,37 +756,26 @@ async function render() {
 render();
 ```
 
-## Configuration Management
-
-### Dual-Mode Configuration Pattern
+**Explanation**: Call config loader before rendering React. Ensures all components have access to configuration from localStorage.
 
 **File**: `src/App/config.js`
 
-**Purpose**: Load environment variables for dev and production
-
-**Exports**: Named export of async function
-
 ```javascript
-/**
- * Configuration management for different environments:
- * - Development: Uses Vite env vars from .env file
- * - Production: Fetches from server endpoint
- */
-
 function isDefined(param) {
   return typeof param !== 'undefined';
 }
 
+// Development: Use Vite environment variables
 function getViteVars() {
   return {
     VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
     VITE_BUILD_VERSION: import.meta.env.VITE_BUILD_VERSION,
-    VITE_FEATURE_FLAG_X: import.meta.env.VITE_FEATURE_FLAG_X,
   };
 }
 
+// Production: Fetch from server endpoint
 async function getNodeVars() {
-  const response = await fetch(`/mw/config`);
+  const response = await fetch('/mw/config');
   return await response.json();
 }
 
@@ -557,7 +792,6 @@ export async function setLocalStorageConfigs() {
   const {
     VITE_API_BASE_URL,
     VITE_BUILD_VERSION,
-    VITE_FEATURE_FLAG_X,
   } = await getVars();
   
   localStorage.clear();
@@ -569,388 +803,53 @@ export async function setLocalStorageConfigs() {
   if (isDefined(VITE_BUILD_VERSION)) {
     localStorage.setItem('buildVersion', VITE_BUILD_VERSION);
   }
-
-  if (isDefined(VITE_FEATURE_FLAG_X)) {
-    localStorage.setItem('featureFlagX', VITE_FEATURE_FLAG_X);
-  }
 }
 ```
 
-**Usage in components**:
+**Explanation**:
+- **Development**: Vite reads `.env` file and exposes vars via `import.meta.env`
+- **Production**: Server provides endpoint (`/mw/config`) with environment variables
+- **localStorage**: All config stored in localStorage for easy access throughout app
+- **Why this pattern**: Same Docker image works in multiple environments (dev, staging, prod) with different configs
+
+**Usage in Components**:
 ```javascript
 const apiUrl = localStorage.getItem('apiBaseUrl');
 const buildVersion = localStorage.getItem('buildVersion');
 ```
 
-## State Management Patterns
-
-### Component-Level State
-
-```javascript
-const [data, setData] = useState(null);
-const [loading, setLoading] = useState(true);
-const [error, setError] = useState(null);
-```
-
-### Derived State
-
-```javascript
-const [items, setItems] = useState([]);
-const activeItems = items.filter(item => item.active);
-const itemCount = items.length;
-```
-
-### Form State
-
-```javascript
-const [formData, setFormData] = useState({
-  name: '',
-  email: '',
-  age: 0,
-});
-
-function handleChange(e) {
-  const { name, value, type } = e.target;
-  setFormData(prev => ({
-    ...prev,
-    [name]: type === 'number' ? parseFloat(value) : value
-  }));
-}
-```
-
-### Storage-Based State
-
-**sessionStorage** for temporary/auth data:
-```javascript
-// Set
-sessionStorage.setItem('auth-token', token);
-
-// Get
-const token = sessionStorage.getItem('auth-token');
-
-// Remove
-sessionStorage.removeItem('auth-token');
-
-// Clear all
-sessionStorage.clear();
-```
-
-**localStorage** for persistent data:
-```javascript
-localStorage.setItem('theme', 'dark');
-const theme = localStorage.getItem('theme');
-```
-
-## Common Hooks Usage
-
-### useState
-
-```javascript
-// Simple state
-const [count, setCount] = useState(0);
-
-// Object state
-const [user, setUser] = useState({ name: '', email: '' });
-
-// Array state
-const [items, setItems] = useState([]);
-
-// Function initial state (lazy)
-const [data, setData] = useState(() => {
-  const saved = localStorage.getItem('data');
-  return saved ? JSON.parse(saved) : null;
-});
-```
-
-### useEffect
-
-```javascript
-// Run once on mount
-useEffect(() => {
-  fetchData();
-}, []);
-
-// Run when dependency changes
-useEffect(() => {
-  fetchUser(userId);
-}, [userId]);
-
-// Cleanup function
-useEffect(() => {
-  const timer = setInterval(() => {
-    console.log('tick');
-  }, 1000);
-
-  return () => clearInterval(timer);
-}, []);
-
-// Multiple effects for separation of concerns
-useEffect(() => {
-  // Effect 1: fetch user
-  fetchUser(id);
-}, [id]);
-
-useEffect(() => {
-  // Effect 2: update document title
-  document.title = `User ${id}`;
-}, [id]);
-```
-
-### useParams (React Router)
-
-```javascript
-import { useParams } from 'react-router-dom';
-
-function UserDetail() {
-  const { id } = useParams(); // From route: /users/:id
-  const { userId, postId } = useParams(); // From route: /users/:userId/posts/:postId
-  
-  useEffect(() => {
-    fetchUser(id);
-  }, [id]);
-}
-```
-
-### useNavigate (React Router)
-
-```javascript
-import { useNavigate } from 'react-router-dom';
-
-function CreateUser() {
-  const navigate = useNavigate();
-
-  async function handleSubmit(userData) {
-    const newUser = await createUser(userData);
-    navigate(`/users/${newUser.id}`); // Navigate to detail page
-  }
-
-  function handleCancel() {
-    navigate(-1); // Go back one page
-  }
-
-  function goHome() {
-    navigate('/'); // Navigate to home
-  }
-}
-```
-
-### useLocation (React Router)
-
-```javascript
-import { useLocation } from 'react-router-dom';
-
-function Navigation() {
-  const location = useLocation();
-  
-  return (
-    <nav>
-      <a className={location.pathname === '/' ? 'active' : ''}>Home</a>
-      <a className={location.pathname === '/about' ? 'active' : ''}>About</a>
-    </nav>
-  );
-}
-```
-
-## Styling Approach
-
-### CSS Modules
-
-**File**: `src/Feature/styles.module.css`
-
-```css
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem;
-}
-
-.list {
-  list-style: none;
-  padding: 0;
-}
-
-.listItem {
-  padding: 1rem;
-  border-bottom: 1px solid #eee;
-}
-
-.error {
-  color: red;
-  font-size: 0.875rem;
-  margin-top: 0.25rem;
-}
-```
-
-**Usage in component**:
-```javascript
-import styles from './styles.module.css';
-
-export default function FeatureList() {
-  return (
-    <div className={styles.container}>
-      <ul className={styles.list}>
-        <li className={styles.listItem}>Item</li>
-      </ul>
-    </div>
-  );
-}
-```
-
-**Benefits**:
-- Scoped styles (no conflicts)
-- Co-located with components
-- Standard CSS syntax
-- Imported as JavaScript objects
-
-### Inline Styles
-
-Use for dynamic or one-off styles:
-
-```javascript
-<div style={{ margin: '2rem auto', maxWidth: '600px' }}>
-  <h1 style={{ color: error ? 'red' : 'black' }}>Title</h1>
-</div>
-```
-
-### Combining Styles
-
-```javascript
-<div 
-  className={styles.button} 
-  style={{ backgroundColor: isActive ? 'blue' : 'gray' }}
->
-  Click me
-</div>
-```
-
-## Data Fetching Patterns
-
-### Basic Fetch Pattern
-
-```javascript
-const [data, setData] = useState(null);
-const [loading, setLoading] = useState(true);
-const [error, setError] = useState(null);
-
-useEffect(() => {
-  async function fetchData() {
-    try {
-      const response = await fetch('/api/items');
-      const json = await response.json();
-      setData(json);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
-  fetchData();
-}, []);
-```
-
-### With Service Layer
-
-```javascript
-import { getItems } from './service.items';
-
-const [items, setItems] = useState([]);
-
-useEffect(() => {
-  async function fetchData() {
-    try {
-      const data = await getItems();
-      setItems(data);
-    } catch (error) {
-      console.error(error);
-    }
-  }
-  fetchData();
-}, []);
-```
-
-### Refetch on Dependency Change
-
-```javascript
-useEffect(() => {
-  async function fetchData() {
-    const data = await getUser(userId);
-    setUser(data);
-  }
-  fetchData();
-}, [userId]); // Refetch when userId changes
-```
-
-## Error Handling
-
-### Try-Catch Pattern
-
-```javascript
-async function handleSubmit(data) {
-  try {
-    const result = await createItem(data);
-    if (result.error) {
-      setError(result.error);
-    } else {
-      onSuccess(result);
-    }
-  } catch (error) {
-    console.error(error);
-    setError(error.message);
-  }
-}
-```
-
-### Conditional Error Display
-
-```javascript
-{error && <p className={styles.error}>{error}</p>}
-{response.error && <p>Error: {response.error}</p>}
-```
-
-### Field-Level Errors
-
-```javascript
-const [errors, setErrors] = useState({});
-
-function validate(data) {
-  const newErrors = {};
-  if (!data.name) newErrors.name = 'Name is required';
-  if (!data.email) newErrors.email = 'Email is required';
-  return newErrors;
-}
-
-async function handleSubmit(e) {
-  e.preventDefault();
-  const newErrors = validate(formData);
-  
-  if (Object.keys(newErrors).length > 0) {
-    setErrors(newErrors);
-    return;
-  }
-  
-  // Submit...
-}
-
-// In JSX
-{errors.name && <span>{errors.name}</span>}
-{errors.email && <span>{errors.email}</span>}
-```
-
 ## Conditional Rendering
+
+Show/hide UI based on state.
 
 ### Loading States
 
 ```javascript
+// Show loading, then content
 {loading && <p>Loading...</p>}
 {!loading && data && <DataDisplay data={data} />}
 ```
 
-### Null/Undefined Checks
+**Explanation**: `&&` operator short-circuits. If left side is falsy, right side doesn't render.
+
+### Null Checks
 
 ```javascript
-{!item && <p>Loading...</p>}
-{item && <ItemDetail item={item} />}
+// Only render if data exists
+{user && <UserProfile user={user} />}
+{!user && <p>No user found</p>}
 ```
+
+### Ternary Operator
+
+```javascript
+// Choose between two options
+{loading ? <Spinner /> : <Content />}
+
+{isAdmin ? <AdminPanel /> : <UserPanel />}
+```
+
+**Explanation**: Ternary for binary choices (show this OR that).
 
 ### Multiple Conditions
 
@@ -966,41 +865,60 @@ async function handleSubmit(e) {
 )}
 ```
 
+**Explanation**: Chain ternaries for multiple states. Check loading first, then error, then data, finally fallback.
+
 ### Boolean Checks
 
 ```javascript
-{isAdmin && <AdminPanel />}
+{isAuthenticated && <Dashboard />}
 {!isAuthenticated && <LoginPrompt />}
 {items.length === 0 && <EmptyState />}
 {items.length > 0 && <ItemList items={items} />}
 ```
 
-## Authentication Patterns
+**Explanation**: Use boolean expressions with `&&` for simple show/hide logic.
 
-### Token Storage
+## Authentication Pattern
 
+**Login**:
 ```javascript
-// Login
-function handleLogin(token) {
-  sessionStorage.setItem('auth-token', token);
-  navigate('/dashboard');
-}
-
-// Logout
-function handleLogout() {
-  sessionStorage.removeItem('auth-token');
-  // or sessionStorage.clear();
-  navigate('/');
-}
-
-// Check auth
-function isAuthenticated() {
-  return !!sessionStorage.getItem('auth-token');
+async function handleLogin(email, password) {
+  try {
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    
+    const { token, user } = await response.json();
+    
+    // Store token in sessionStorage
+    sessionStorage.setItem('auth-token', token);
+    
+    // Navigate to dashboard
+    navigate('/dashboard');
+  } catch (error) {
+    setError('Login failed');
+  }
 }
 ```
 
-### Protected Route Pattern
+**Explanation**: Store auth token in sessionStorage (cleared when browser closes). Navigate to protected route after successful login.
 
+**Logout**:
+```javascript
+function handleLogout() {
+  // Clear session data
+  sessionStorage.clear();
+  
+  // Navigate to home
+  navigate('/');
+}
+```
+
+**Explanation**: Remove all session data and redirect to public page.
+
+**Protected Routes**:
 ```javascript
 import { Navigate } from 'react-router-dom';
 
@@ -1008,6 +926,7 @@ function ProtectedRoute({ children }) {
   const token = sessionStorage.getItem('auth-token');
   
   if (!token) {
+    // Redirect to login if not authenticated
     return <Navigate to="/login" replace />;
   }
   
@@ -1025,44 +944,9 @@ function ProtectedRoute({ children }) {
 />
 ```
 
-### Auth Context Pattern (Optional)
-
-```javascript
-import { createContext, useContext, useState } from 'react';
-
-const AuthContext = createContext();
-
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-
-  function login(token, userData) {
-    sessionStorage.setItem('auth-token', token);
-    setUser(userData);
-  }
-
-  function logout() {
-    sessionStorage.clear();
-    setUser(null);
-  }
-
-  return (
-    <AuthContext.Provider value={{ user, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
-}
-
-export function useAuth() {
-  return useContext(AuthContext);
-}
-
-// Usage
-const { user, login, logout } = useAuth();
-```
+**Explanation**: Wrapper component checks for token. If missing, redirects to login. If present, renders protected component. `replace` prevents back button to protected route.
 
 ## Build Configuration
-
-### Vite Config
 
 **File**: `vite.config.js`
 
@@ -1074,7 +958,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    host: true, // Expose to network
+    host: true, // Expose to network (for Docker)
   },
   build: {
     outDir: 'dist',
@@ -1083,48 +967,54 @@ export default defineConfig({
 })
 ```
 
-### Package.json Scripts
+**Explanation**:
+- **plugins**: Enables React with JSX and Fast Refresh
+- **host: true**: Makes dev server accessible from network (needed for Docker containers)
+- **outDir**: Where production build files go
+- **sourcemap**: Generate source maps for debugging
+
+**File**: `package.json`
 
 ```json
 {
+  "name": "my-react-app",
+  "version": "1.0.0",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint src --ext js,jsx"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.11.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.0.0",
+    "vite": "^4.3.0",
+    "eslint": "^8.38.0"
   }
 }
 ```
 
-## Best Practices Summary
-
-1. **Feature-based organization** over type-based
-2. **Functional components with Hooks** exclusively
-3. **Service layer** isolates API calls
-4. **CSS Modules** for scoped styling
-5. **React Router** for navigation
-6. **Native fetch** for HTTP requests
-7. **localStorage** for persistent config
-8. **sessionStorage** for auth tokens
-9. **Explicit conditionals** for rendering logic
-10. **Component composition** over inheritance
-11. **Props for data flow** down the tree
-12. **Async/await** for promises
-13. **Try-catch** for error handling
-14. **useEffect** for side effects
-15. **Single responsibility** per component
+**Explanation**:
+- **type: "module"**: Enables ES6 modules in Node.js
+- **dependencies**: Runtime packages included in bundle
+- **devDependencies**: Build tools not included in bundle
 
 ## When to Use This Pattern
 
-This architecture is ideal for:
+**Ideal for**:
 - Small to medium SPAs (5-50 components)
 - Apps with clear feature boundaries
 - Teams preferring minimal dependencies
 - Projects with straightforward state needs
 - Rapid prototyping and MVPs
 
-Consider alternatives (Redux, TanStack Query, etc.) for:
-- Large apps with complex state
-- Heavy caching requirements
-- Real-time data synchronization
-- Complex data normalization needs
+**Consider alternatives for**:
+- Large apps with complex state (use Redux, Zustand)
+- Heavy caching requirements (use TanStack Query)
+- Real-time data synchronization (use WebSockets, GraphQL subscriptions)
+- Complex data normalization needs (use Redux Toolkit, Normalize)
